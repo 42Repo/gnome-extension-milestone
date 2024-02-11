@@ -9,10 +9,6 @@ Ce guide vous montre comment installer le nécessaire pour exécuter un programm
 
 ## Étapes d'installation
 
-### 1. Installation de Selenium
-
-Selenium est un outil qui permet l'automatisation des navigateurs web. Pour l'installer, exécutez la commande suivante dans votre terminal :
-
 ```bash
 pip install selenium
 mkdir -p "$HOME/.local/share/gnome-shell/extensions/"
