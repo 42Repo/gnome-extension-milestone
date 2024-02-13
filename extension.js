@@ -126,72 +126,89 @@
 
 
             _onRefreshClicked() {
-            let username = this.usernameEntry.get_text();
-            let password = this.passwordEntry.get_text();
+                let username = this.usernameEntry.get_text();
+                let password = this.passwordEntry.get_text();
 
-            // Effacer les champs pour des raisons de sécurité
-            this.usernameEntry.set_text('');
-            this.passwordEntry.set_text('');
+                // Effacer les champs pour des raisons de sécurité
+                this.usernameEntry.set_text('');
+                this.passwordEntry.set_text('');
 
-            // Construire le chemin absolu vers scrapper.py
-            let scriptPath = Me.dir.get_path() + '/scrapper.py';
+                // Construire le chemin absolu vers scrapper.py
+                let scriptPath = Me.dir.get_path() + '/scrapper.py';
 
-            // Définition d'une fonction pour lancer le subprocess
-            const executeScript = (pythonCommand) => {
-                let subprocess = new Gio.Subprocess({
-                    argv: [pythonCommand, scriptPath, username, password],
-                    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-                });
-                subprocess.init(null);
-                subprocess.communicate_utf8_async(null, null, (source, result) => {
-                    try {
-                        let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
-                        if (!ok || stderr.length > 0 || stdout.includes("ERROR:")) {
-                            let errorMsg = stderr || stdout; // Utilisez stderr ou stdout si stderr est vide
-                            Main.notify("Erreur", `Erreur d'exécution de scrapper.py avec ${pythonCommand}: ${errorMsg}`);
-                            return;
-                        }
-                        // Traiter la sortie standard pour dire à l'utilisateur si les dates ont été mises à jour
-                        Main.notify("Succès", "Les dates ont été mises à jour avec succès.");
-                    } catch (e) {
-                        Main.notify("Erreur", `Échec de l'exécution de scrapper.py avec ${pythonCommand}: ${e}`);
-                    }
-                });
-            };
-
-            // Vérifier si python3 est disponible
-            let python3Subprocess = new Gio.Subprocess({
-                argv: ['python3', '--version'],
-                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-            });
-
-            python3Subprocess.init(null);
-            python3Subprocess.communicate_utf8_async(null, null, (source, result) => {
-                let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
-                if (ok) {
-                    // Si python3 est disponible, l'utiliser
-                    executeScript('python3');
-                } else {
-                    // Sinon, vérifier si python est disponible
-                    let pythonSubprocess = new Gio.Subprocess({
-                        argv: ['python', '--version'],
+                const executeScript = (pythonCommand) => {
+                    let subprocess = new Gio.Subprocess({
+                        argv: [pythonCommand, scriptPath, username, password],
                         flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
                     });
-                    pythonSubprocess.init(null);
-                    pythonSubprocess.communicate_utf8_async(null, null, (source, result) => {
-                        let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
-                        if (ok) {
-                            // Si python est disponible, l'utiliser
-                            executeScript('python');
-                        } else {
-                            // Si ni python3 ni python n'est disponible, afficher un message d'erreur
-                            Main.notify("Erreur", "Python n'est pas disponible sur ce système.");
+                    subprocess.init(null);
+                    subprocess.communicate_utf8_async(null, null, (source, result) => {
+                        try {
+                            let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
+                            if (!ok || stderr.length > 0 || stdout.includes("ERROR:")) {
+                                let errorMsg = stderr || stdout; // Utilisez stderr ou stdout si stderr est vide
+                                Main.notify("Erreur", `Erreur d'exécution de scrapper.py avec ${pythonCommand}: ${errorMsg}`);
+                                return;
+                            }
+                            // Traitement réussi, sauvegarder les dates dans un fichier
+                            const datesFilePath = GLib.build_filenamev([Me.dir.get_path(), 'dates.txt']);
+                            GLib.file_set_contents(datesFilePath, stdout); // stdout contient les dates séparées par des sauts de ligne
+
+                            // Mise à jour des propriétés de l'extension avec les nouvelles dates
+                            this._loadDatesAndUpdateLabels();
+
+                            // Notifier l'utilisateur que les dates ont été mises à jour avec succès
+                            Main.notify("Succès", "Les dates ont été sauvegardées avec succès dans dates.txt.");
+                        } catch (e) {
+                            Main.notify("Erreur", `Échec de l'exécution de scrapper.py avec ${pythonCommand}: ${e}`);
                         }
                     });
-                }
-            });
-        }
-    });
+                };
+
+                // Détermine quelle version de Python utiliser et exécute le script
+                this._determinePythonAndExecute(executeScript);
+            }
+
+            _determinePythonAndExecute(executeScriptCallback) {
+                // Vérifie la disponibilité de Python 3
+                let python3Subprocess = new Gio.Subprocess({
+                    argv: ['python3', '--version'],
+                    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+                });
+
+                python3Subprocess.init(null);
+                python3Subprocess.communicate_utf8_async(null, null, (source, result) => {
+                    let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
+                    if (ok) {
+                        executeScriptCallback('python3');
+                    } else {
+                        // Vérifie la disponibilité de Python 2
+                        let pythonSubprocess = new Gio.Subprocess({
+                            argv: ['python', '--version'],
+                            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+                        });
+                        pythonSubprocess.init(null);
+                        pythonSubprocess.communicate_utf8_async(null, null, (source, result) => {
+                            let [ok, stdout, stderr] = source.communicate_utf8_finish(result);
+                            if (ok) {
+                                executeScriptCallback('python');
+                            } else {
+                                Main.notify("Erreur", "Python n'est pas disponible sur ce système.");
+                            }
+                        });
+                    }
+                });
+            }
+
+            _loadDatesAndUpdateLabels() {
+                let [firstDate, secondDate] = this._loadDatesFromFile();
+                this.firstCountdownDate = firstDate;
+                this.secondCountdownDate = secondDate;
+
+                // Met à jour les labels avec les nouvelles dates
+                this._refreshCountdowns();
+            }
+        });
 
     function updateExtension() {
         const extensionUUID = "gnome-extension-milestone@asuc"; // UUID de l'extension
