@@ -10,6 +10,7 @@ const { MessageTray } = imports.ui.messageTray;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
+let CounterInstance;
 
 function get_time(delta) {
     // calculate (and subtract) whole days
@@ -35,13 +36,12 @@ function get_time(delta) {
     return (days.toString() + " days " + hours + ":" + minutes + ":" + seconds);
 }
 
-const EdCounter = GObject.registerClass(
-    class EdCounter extends PanelMenu.Button {
+const Counter = GObject.registerClass(
+    class Counter extends PanelMenu.Button {
         _init() {
             super._init(0.0, 'Counter', false);
             let box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
             this.add_actor(box);
-
             // Initialisation des dates à partir du fichier ou valeurs par défaut
             let [firstDate, secondDate] = this._loadDatesFromFile();
 
@@ -62,11 +62,10 @@ const EdCounter = GObject.registerClass(
                 y_align: Clutter.ActorAlign.CENTER
             });
             box.add_child(this.secondCountdownLabel);
-
             // Ajouter les champs d'entrée pour Username et Password dans le menu
             this._addEntryFields();
             this._addRefreshButton();
-            Main.panel.addToStatusArea('Counter', this, 1, 'left');
+            // Main.panel.addToStatusArea('Counter', this, 1, 'left');
             this._startRefreshLoop();
         }
 
@@ -179,11 +178,14 @@ const EdCounter = GObject.registerClass(
     function init() {}
 
     function enable() {
-        new EdCounter();
+        CounterInstance = new Counter();
+        Main.panel.addToStatusArea('Counter', CounterInstance, 1, 'left');
     }
 
     function disable() {
-        if (ed_counter) {
-            ed_counter.destroy();
+        if (CounterInstance) {
+            CounterInstance.destroy();
+            CounterInstance = null;
         }
     }
+
