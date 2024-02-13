@@ -59,7 +59,7 @@
                 box.add_child(spacer);
 
                 this.secondCountdownLabel = new St.Label({
-                    text: "FinTronCommun : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000),
+                    text: "ETA : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000),
                     y_align: Clutter.ActorAlign.CENTER
                 });
                 box.add_child(this.secondCountdownLabel);
@@ -99,7 +99,7 @@
             _refreshCountdowns() {
                 // Assurez-vous que cette méthode met à jour les labels basés sur les propriétés actuelles
                 this.firstCountdownLabel.set_text("Milestone : " + get_time((this.firstCountdownDate.getTime() - (new Date()).getTime()) / 1000));
-                this.secondCountdownLabel.set_text("FinTronCommun : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000));
+                this.secondCountdownLabel.set_text("ETA : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000));
             }
             _addEntryFields() {
                 // Champ d'entrée pour Username
