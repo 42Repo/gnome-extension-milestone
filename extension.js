@@ -193,6 +193,43 @@
         }
     });
 
+    function updateExtension() {
+        const extensionUUID = "gnome-extension-milestone@asuc"; // UUID de l'extension
+        const extensionDir = GLib.build_filenamev([GLib.get_home_dir(), ".local", "share", "gnome-shell", "extensions", extensionUUID]);
+
+        // Vérifier si le répertoire de l'extension existe et est un dépôt Git
+        if (GLib.file_test(extensionDir, GLib.FileTest.IS_DIR)) {
+            const gitDir = GLib.build_filenamev([extensionDir, ".git"]);
+            if (GLib.file_test(gitDir, GLib.FileTest.IS_DIR)) {
+                // Le répertoire est un dépôt Git, procéder à la mise à jour
+                const pullProcess = new Gio.Subprocess({
+                    argv: ['git', '-C', extensionDir, 'pull'],
+                    flags: Gio.SubprocessFlags.NONE,
+                });
+
+                pullProcess.init(null);
+                pullProcess.wait_check_async(null, (source, result) => {
+                    try {
+                        if (source.wait_check_finish(result)) {
+                            // La mise à jour a réussi
+                            Main.notify("Mise à jour de l'extension", "L'extension a été mise à jour avec succès. Veuillez redémarrer GNOME Shell.");
+                        } else {
+                            // Échec de la mise à jour
+                            Main.notify("Échec de la mise à jour", "Impossible de mettre à jour l'extension.");
+                        }
+                    } catch (e) {
+                        global.log("Erreur", `Échec de la mise à jour de l'extension: ${e}`);
+                    }
+                });
+            } else {
+                Main.notify("Mise à jour impossible", "Le dossier de l'extension n'est pas un dépôt Git.");
+            }
+        } else {
+            Main.notify("Mise à jour impossible", "Le dossier de l'extension n'existe pas.");
+        }
+    }
+
+
         function checkForUpdates() {
             const currentVersion = Me.metadata.version; // Version actuelle de l'extension
             const metadataUrl = "https://raw.githubusercontent.com/42Repo/gnome-extension-milestone/main/metadata.json";
@@ -204,8 +241,7 @@
                     let remoteVersion = metadata.version;
 
                     if (currentVersion !== remoteVersion) {
-                        // Si la version sur GitHub est différente (et potentiellement plus récente)
-                        Main.notify("Mise à jour disponible", `Une nouvelle version de l'extension est disponible : ${remoteVersion}.`);
+                        updateExtension();
                     }
                 } else {
                     log("Erreur lors de la récupération du metadata.json: " + response.status_code);
