@@ -9,6 +9,7 @@
     const { MessageTray } = imports.ui.messageTray;
     const ExtensionUtils = imports.misc.extensionUtils;
     const Me = ExtensionUtils.getCurrentExtension();
+    const _httpSession = new Soup.SessionAsync();
 
     let CounterInstance;
 
@@ -123,6 +124,7 @@
                 });
             }
 
+
             _onRefreshClicked() {
             let username = this.usernameEntry.get_text();
             let password = this.passwordEntry.get_text();
@@ -191,9 +193,30 @@
         }
     });
 
+        function checkForUpdates() {
+            const currentVersion = Me.metadata.version; // Version actuelle de l'extension
+            const metadataUrl = "https://raw.githubusercontent.com/42Repo/gnome-extension-milestone/main/metadata.json";
+
+            let message = Soup.Message.new('GET', metadataUrl);
+            _httpSession.queue_message(message, (session, response) => {
+                if (response.status_code === 200) {
+                    let metadata = JSON.parse(response.response_body.data);
+                    let remoteVersion = metadata.version;
+
+                    if (currentVersion !== remoteVersion) {
+                        // Si la version sur GitHub est différente (et potentiellement plus récente)
+                        Main.notify("Mise à jour disponible", `Une nouvelle version de l'extension est disponible : ${remoteVersion}.`);
+                    }
+                } else {
+                    log("Erreur lors de la récupération du metadata.json: " + response.status_code);
+                }
+            });
+        }
+
         function init() {}
 
         function enable() {
+            checkForUpdates();
             CounterInstance = new Counter();
             Main.panel.addToStatusArea('Counter', CounterInstance, 1, 'left');
         }
