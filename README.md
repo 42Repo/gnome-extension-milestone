@@ -1,7 +1,5 @@
 # Installation du programme avec Selenium et l'extension GNOME
 
-Ce guide vous montre comment installer le nécessaire pour exécuter un programme utilisant Selenium et installer une extension GNOME spécifique.
-
 ## Prérequis
 
 - Avoir `git` installé sur votre système.
@@ -16,5 +14,5 @@ cd "$HOME/.local/share/gnome-shell/extensions/"
 git clone https://github.com/42Repo/gnome-extension-milestone.git gnome-extension-milestone@asuc
 killall -3 gnome-shell
 gnome-extensions enable gnome-extension-milestone@asuc
+pip install webdriver-manager
 ```
-Ce tutoriel couvre les bases de l'installation de Selenium et de l'installation et l'activation d'une extension GNOME. Modifiez les étapes selon vos besoins spécifiques ou les spécificités de votre environnement.

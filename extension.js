@@ -38,16 +38,18 @@ function get_time(delta) {
 const EdCounter = GObject.registerClass(
     class EdCounter extends PanelMenu.Button {
         _init() {
-            super._init(0.0, 'ED Counter', false);
-
+            super._init(0.0, 'Counter', false);
             let box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
             this.add_actor(box);
 
             // Initialisation des dates à partir du fichier ou valeurs par défaut
             let [firstDate, secondDate] = this._loadDatesFromFile();
+
+            global.log(firstDate);
             this.firstCountdownDate = firstDate;
             this.secondCountdownDate = secondDate;
 
+            global.log(this.firstCountdownDate);
             // Configuration des labels
             this.firstCountdownLabel = new St.Label({
                 text: "Milestone : " + get_time((this.firstCountdownDate.getTime() - (new Date()).getTime()) / 1000),
@@ -67,8 +69,7 @@ const EdCounter = GObject.registerClass(
             // Ajouter les champs d'entrée pour Username et Password dans le menu
             this._addEntryFields();
             this._addRefreshButton();
-
-            Main.panel.addToStatusArea('ed_counter', this, 1, 'left');
+            Main.panel.addToStatusArea('Counter', this, 1, 'left');
             this._startRefreshLoop();
         }
 
@@ -80,6 +81,7 @@ const EdCounter = GObject.registerClass(
                 if (res) {
                     let dates = contents.toString().trim().split('\n');
                     if (dates.length >= 2) {
+
                         return [new Date(dates[0].trim()), new Date(dates[1].trim())];
                     }
                 }
@@ -136,9 +138,10 @@ const EdCounter = GObject.registerClass(
 
             // Lancer le script Python avec Gio.Subprocess
             let subprocess = new Gio.Subprocess({
-                argv: ['python', scriptPath, username, password],
+                argv: ['python3', scriptPath, username, password],
                 flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
             });
+            // on ecrit le code pour executer le script python avec python scriptPath username password
             subprocess.init(null);
             subprocess.communicate_utf8_async(null, null, (source, result) => {
                 try {
@@ -151,6 +154,12 @@ const EdCounter = GObject.registerClass(
                     // Traiter la sortie standard pour extraire les dates
                     let dates = stdout.trim().split('\n');
                     if (dates.length >= 2) {
+                        // on ecrit les deux chaines de date dans les logs et on affcihe les dates dans la console qui est ouverte avec la commande journalctl -f -o cat -u gnome-shell --user
+                        // log(dates[0]);
+                        // log(dates[1]);
+                        // log(dates[0].trim());
+                        // log(dates[1].trim());
+
                         // Convertir les chaînes de date en objets Date et les mettre à jour
                         this.firstCountdownDate = new Date(dates[0].trim());
                         this.secondCountdownDate = new Date(dates[1].trim());

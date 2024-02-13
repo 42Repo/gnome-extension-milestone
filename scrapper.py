@@ -10,67 +10,70 @@ import sys
 
 # Initialisation de WebDriver
 options = webdriver.ChromeOptions()
+options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36")
+options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 def inverse_jour_mois(dates):
-    # Création d'une liste pour stocker les dates inversées
     dates_inversees = []
     for date in dates:
-        # Séparation de la date en ses composantes
-        elements = date.split('/')
-        # Inversion du jour et du mois
-        date_inverse = f"{elements[1]}/{elements[0]}/{elements[2]}"
-        # Ajout de la date inversée à la liste
+        jour, mois, annee = date.split('/')
+        # Assurez-vous que le jour et le mois ont deux chiffres
+        jour = jour.zfill(2)
+        mois = mois.zfill(2)
+        # Inversion du jour et du mois, tout en conservant l'année telle quelle
+        date_inverse = f"{jour}/{mois}/{annee}"
         dates_inversees.append(date_inverse)
     return dates_inversees
-
-def check_end_goals_filled(driver):
-    try:
-        # Trouver tous les éléments par la classe "end-goal"
-        end_goals = driver.find_elements(By.CLASS_NAME, "end-goal")
-        # Afficher les textes des deux premiers éléments pour débogage
-        if len(end_goals) > 1:  # Assurez-vous qu'il y a au moins deux éléments
-            # Vérifier si les deux premiers éléments sont non vides
-            return end_goals[0].text.strip() != "" and end_goals[1].text.strip() != ""
-        else:
-            return False
-    except Exception as e:
-        print(f"ERROR: Erreur lors de la vérification des end-goals: {e}")
-        return False
 
 def main(username, password):
     # Ouvrir la page de connexion
     try:
         # Ouvrir la page de connexion
         driver.get("https://signin.intra.42.fr/users/sign_in")
-            # Attendre que le formulaire de connexion soit chargé
+        # Attendre que le formulaire de connexion soit chargé
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "username")))
         # Remplir le formulaire de connexion (ajustez les sélecteurs et les valeurs)
         driver.find_element(By.ID, "username").send_keys(username)
         driver.find_element(By.ID, "password").send_keys(password)
         driver.find_element(By.NAME, "login").click()
 
+        # Attendre que la page se charge mais si la page se nomme "Attention Required! | Cloudflare" alors on quitte avec un messag d'erreur
+        # time.sleep(120)
         try:
-            WebDriverWait(driver, 10).until(EC.title_is("Intra Profile Home"))
+            WebDriverWait(driver, 5).until(EC.title_is("42 | Profile"))
         except TimeoutException:
+            # si le titre est "Attention Required! | Cloudflare" alors on quitte avec un message d'erreur
+            print(driver.title)
+            if driver.title == "Attention Required! | Cloudflare":
+                print("ERROR: Cloudflared.")
+                sys.exit(1)
+            else:
+                print("ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site.")
+                sys.exit(1)
+        try:
+            WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".font-bold.false")))
+        except TimeoutException:
+            if driver.title == "Attention Required! | Cloudflare":
+                print("ERROR: Cloudflared.")
+                sys.exit(1)
             print("ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site.")
             sys.exit(1)
-        WebDriverWait(driver, 20).until(check_end_goals_filled)
+        # Récupérer les dates .font-bold.false
+        dates_milestone_elements = driver.find_elements(By.CSS_SELECTOR, ".font-bold.false")
+        dates_milestone_texts = [element.text for element in dates_milestone_elements if element.text.strip() != ""]
+        xpath = "//div[contains(@class, 'whitespace-nowrap') and contains(text(), 'Common Core ETA:')]/following-sibling::div[@class='font-bold']"
+        date_eta_element = WebDriverWait(driver, 2).until(EC.visibility_of_element_located((By.XPATH, xpath)))
+        date_eta_text = date_eta_element.text
+        toutes_les_dates = dates_milestone_texts
+        if date_eta_text:  # Si date_eta_text n'est pas vide
+            toutes_les_dates.append(date_eta_text)  # Ajoutez date_eta_text comme nouvel élément de la liste
+        dates_inverses = inverse_jour_mois(toutes_les_dates)
+        # on screen la page pour vérifier que tout est ok avant de quitter et de fermer le navigateur
 
-        # Après attente, récupérer à nouveau les éléments pour s'assurer qu'ils sont correctement chargés
-        try:
-            end_goals = driver.find_elements(By.CLASS_NAME, "end-goal")
-
-            if len(end_goals) >= 2:
-                dates = inverse_jour_mois([end_goals[0].text, end_goals[1].text])
-                print(dates[0])
-                print(dates[1])
-            else:
-                print("ERROR: Moins de deux end-goals trouvés.")
-        except NoSuchElementException:
-            print("ERROR: Un ou plusieurs éléments attendus ne sont pas trouvés sur la page.")
-            return False
+        print(dates_inverses[0])
+        print(dates_inverses[1])
     finally:
         driver.quit()
 
