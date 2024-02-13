@@ -45,11 +45,8 @@ const EdCounter = GObject.registerClass(
             // Initialisation des dates à partir du fichier ou valeurs par défaut
             let [firstDate, secondDate] = this._loadDatesFromFile();
 
-            global.log(firstDate);
             this.firstCountdownDate = firstDate;
             this.secondCountdownDate = secondDate;
-
-            global.log(this.firstCountdownDate);
             // Configuration des labels
             this.firstCountdownLabel = new St.Label({
                 text: "Milestone : " + get_time((this.firstCountdownDate.getTime() - (new Date()).getTime()) / 1000),
@@ -81,8 +78,10 @@ const EdCounter = GObject.registerClass(
                 if (res) {
                     let dates = contents.toString().trim().split('\n');
                     if (dates.length >= 2) {
-
-                        return [new Date(dates[0].trim()), new Date(dates[1].trim())];
+                        dates = [new Date(dates[0].trim()), new Date(dates[1].trim())];
+                        dates[0].setDate(dates[0].getDate() + 1);
+                        dates[1].setDate(dates[1].getDate() + 1);
+                        return [dates[0], dates[1]];
                     }
                 }
             }
@@ -155,12 +154,7 @@ const EdCounter = GObject.registerClass(
                     let dates = stdout.trim().split('\n');
                     if (dates.length >= 2) {
                         // on ecrit les deux chaines de date dans les logs et on affcihe les dates dans la console qui est ouverte avec la commande journalctl -f -o cat -u gnome-shell --user
-                        // log(dates[0]);
-                        // log(dates[1]);
-                        // log(dates[0].trim());
-                        // log(dates[1].trim());
 
-                        // Convertir les chaînes de date en objets Date et les mettre à jour
                         this.firstCountdownDate = new Date(dates[0].trim());
                         this.secondCountdownDate = new Date(dates[1].trim());
 
