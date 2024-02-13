@@ -229,38 +229,37 @@
         }
     }
 
+    function checkForUpdates() {
+        const currentVersion = Me.metadata.version; // Version actuelle de l'extension
+        const metadataUrl = "https://raw.githubusercontent.com/42Repo/gnome-extension-milestone/main/metadata.json";
 
-        function checkForUpdates() {
-            const currentVersion = Me.metadata.version; // Version actuelle de l'extension
-            const metadataUrl = "https://raw.githubusercontent.com/42Repo/gnome-extension-milestone/main/metadata.json";
+        let message = Soup.Message.new('GET', metadataUrl);
+        _httpSession.queue_message(message, (session, response) => {
+            if (response.status_code === 200) {
+                let metadata = JSON.parse(response.response_body.data);
+                let remoteVersion = metadata.version;
 
-            let message = Soup.Message.new('GET', metadataUrl);
-            _httpSession.queue_message(message, (session, response) => {
-                if (response.status_code === 200) {
-                    let metadata = JSON.parse(response.response_body.data);
-                    let remoteVersion = metadata.version;
-
-                    if (currentVersion !== remoteVersion) {
-                        updateExtension();
-                    }
-                } else {
-                    log("Erreur lors de la récupération du metadata.json: " + response.status_code);
+                if (currentVersion !== remoteVersion) {
+                    updateExtension();
                 }
-            });
-        }
-
-        function init() {}
-
-        function enable() {
-            checkForUpdates();
-            CounterInstance = new Counter();
-            Main.panel.addToStatusArea('Counter', CounterInstance, 1, 'left');
-        }
-
-        function disable() {
-            if (CounterInstance) {
-                CounterInstance.destroy();
-                CounterInstance = null;
+            } else {
+                log("Erreur lors de la récupération du metadata.json: " + response.status_code);
             }
+        });
+    }
+
+    function init() {}
+
+    function enable() {
+        checkForUpdates();
+        CounterInstance = new Counter();
+        Main.panel.addToStatusArea('Counter', CounterInstance, 1, 'left');
+    }
+
+    function disable() {
+        if (CounterInstance) {
+            CounterInstance.destroy();
+            CounterInstance = null;
         }
+    }
 
