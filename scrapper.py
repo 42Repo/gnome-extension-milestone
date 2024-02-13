@@ -47,7 +47,7 @@ def main(username, password):
             # si le titre est "Attention Required! | Cloudflare" alors on quitte avec un message d'erreur
             print(driver.title)
             if driver.title == "Attention Required! | Cloudflare":
-                print("ERROR: Cloudflared.")
+                print("ERROR: Cloudflared. Wait a few minutes and try again.")
                 sys.exit(1)
             else:
                 print("ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site.")
@@ -56,7 +56,7 @@ def main(username, password):
             WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".font-bold.false")))
         except TimeoutException:
             if driver.title == "Attention Required! | Cloudflare":
-                print("ERROR: Cloudflared.")
+                print("ERROR: Cloudflared. Wait a few minutes and try again.")
                 sys.exit(1)
             print("ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site.")
             sys.exit(1)
