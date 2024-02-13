@@ -72,8 +72,8 @@ def main(username, password):
         dates_inverses = inverse_jour_mois(toutes_les_dates)
         # on screen la page pour vérifier que tout est ok avant de quitter et de fermer le navigateur
 
-        print(dates_inverses[0])
         print(dates_inverses[1])
+        print(dates_inverses[0])
     finally:
         driver.quit()
 

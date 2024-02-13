@@ -83,8 +83,8 @@
                 }
                 this._addEntryFields();
                 this._addRefreshButton();
-                this._startRefreshLoop();
                 this._refreshCountdowns();
+                this._startRefreshLoop();
             }
 
             _loadDatesFromFile() {
@@ -162,14 +162,14 @@
 
             _addRefreshButton() {
                 let refreshButton = new PopupMenu.PopupMenuItem('Refresh');
-                this.menu.addMenuItem
+                this.menu.addMenuItem(refreshButton);
                 refreshButton.connect('activate', () => {
                     // Réinitialiser la sélection manuelle lors du rafraîchissement
                     this.manualSelection = false;
                     this.currentMilestoneIndex = 0; // Réinitialiser à la première milestone
 
-                    // Recharger et rafraîchir les labels
-                    this._loadDatesAndUpdateLabels();
+                    // Recharger les données et rafraîchir les labels
+                    this._onRefreshClicked();
                 });
             }
 
@@ -182,7 +182,7 @@
                 this.passwordEntry.set_text('');
 
                 // Construire le chemin absolu vers scrapper.py
-                let scriptPath = Me.dir.get_path() + '/scrapper.py';
+                let scriptPath = Me.dir.get_path() + '/scrapperOldIntra.py';
 
                 const executeScript = (pythonCommand) => {
                     let subprocess = new Gio.Subprocess({
@@ -215,6 +215,7 @@
 
                 // Détermine quelle version de Python utiliser et exécute le script
                 this._determinePythonAndExecute(executeScript);
+                this._startRefreshLoop();
             }
 
             _determinePythonAndExecute(executeScriptCallback) {
@@ -249,14 +250,43 @@
             }
 
             _loadDatesAndUpdateLabels() {
-                // Charger les données depuis le fichier
                 let { ETA, milestones } = this._loadDatesFromFile();
                 this.ETA = ETA;
                 this.milestones = milestones;
 
+                // Mise à jour de l'ETA
+                this.ETALabel.set_text("ETA : " + get_time((ETA.getTime() - (new Date()).getTime()) / 1000));
+
+                // Supprimer les éléments existants du menu des milestones
+                this.milestonesMenu.menu.removeAll();
+
+                // Reconstruire le menu déroulant avec les nouvelles milestones
+                milestones.forEach((milestone, index) => {
+                    let menuItem = new PopupMenu.PopupMenuItem(`Milestone ${index + 1}: ${milestone.toLocaleDateString()}`);
+                    menuItem.connect('activate', () => {
+                        this.selectedMilestoneLabel.set_text(` | Milestone ${index + 1}: ` + get_time((milestone.getTime() - (new Date()).getTime()) / 1000));
+                        this.currentMilestoneIndex = index;
+                        this.manualSelection = true;  // Empêcher la mise à jour automatique d'écraser cette sélection
+                    });
+                    this.milestonesMenu.menu.addMenuItem(menuItem);
+                });
+
+                // Réinitialiser le label sélectionné pour la première milestone si elle existe
+                if (milestones.length > 0) {
+                    this.selectedMilestoneLabel.set_text(` | Milestone 1: ` + get_time((milestones[0].getTime() - (new Date()).getTime()) / 1000));
+                    this.currentMilestoneIndex = 0;
+                    this.manualSelection = false;
+                } else {
+                    // Si aucune milestone, effacer le label sélectionné
+                    this.selectedMilestoneLabel.set_text("");
+                }
+
                 // Mise à jour des labels
                 this._refreshCountdowns();
             }
+
+
+
             _onMilestoneSelected(index) {
                 this.currentMilestoneIndex = index;
                 this.manualSelection = true;
