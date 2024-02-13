@@ -140,7 +140,7 @@
                 } else {
                     // Sinon, afficher la première milestone par défaut
                     if (milestones.length > 0) {
-                        this.selectedMilestoneLabel.set_text(` | Milestone 1 : ` + get_time((milestones[0].getTime() - (new Date()).getTime()) / 1000));
+                        this.selectedMilestoneLabel.set_text(` | Milestone 1: ` + get_time((milestones[0].getTime() - (new Date()).getTime()) / 1000));
                     }
                 }
             }
