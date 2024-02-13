@@ -12,6 +12,8 @@
     const _httpSession = new Soup.SessionAsync();
 
     let CounterInstance;
+    this.manualSelection = false;
+    this.currentMilestoneIndex = 0;
 
     function get_time(delta) {
         // calculate (and subtract) whole days
@@ -43,51 +45,81 @@
                 super._init(0.0, 'Counter', false);
                 let box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
                 this.add_actor(box);
-                // Initialisation des dates à partir du fichier ou valeurs par défaut
-                let [firstDate, secondDate] = this._loadDatesFromFile();
 
-                this.firstCountdownDate = firstDate;
-                this.secondCountdownDate = secondDate;
-                // Configuration des labels
-                this.firstCountdownLabel = new St.Label({
-                    text: "Milestone : " + get_time((this.firstCountdownDate.getTime() - (new Date()).getTime()) / 1000),
+                // Charger les dates depuis le fichier
+                let { ETA, milestones } = this._loadDatesFromFile();
+
+                // Créer et afficher l'ETA
+                this.ETALabel = new St.Label({
+                    text: "ETA : " + get_time((ETA.getTime() - (new Date()).getTime()) / 1000),
                     y_align: Clutter.ActorAlign.CENTER
                 });
-                box.add_child(this.firstCountdownLabel);
+                box.add_child(this.ETALabel);
 
-                let spacer = new St.Label({ text: " | ", y_align: Clutter.ActorAlign.CENTER });
-                box.add_child(spacer);
+                // Créer le menu déroulant pour les milestones
+                this.milestonesMenu = new PopupMenu.PopupSubMenuMenuItem("Select Milestone");
+                this.menu.addMenuItem(this.milestonesMenu);
 
-                this.secondCountdownLabel = new St.Label({
-                    text: "ETA : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000),
+                // Remplir le menu déroulant avec les milestones
+                milestones.forEach((milestone, index) => {
+                    let menuItem = new PopupMenu.PopupMenuItem(`Milestone ${index + 1}: ${milestone.toLocaleDateString()}`);
+                    menuItem.connect('activate', () => {
+                        // Quand une milestone est sélectionnée, mettre à jour le label et définir manualSelection sur true
+                        this.selectedMilestoneLabel.set_text(` | Milestone ${index + 1}: ` + get_time((milestone.getTime() - (new Date()).getTime()) / 1000));
+                        this.currentMilestoneIndex = index;
+                        this.manualSelection = true; // Empêcher la mise à jour automatique d'écraser cette sélection
+                    });
+                    this.milestonesMenu.menu.addMenuItem(menuItem);
+                });
+                // Ajouter le label pour la milestone sélectionnée
+                this.selectedMilestoneLabel = new St.Label({
+                    text: '',
                     y_align: Clutter.ActorAlign.CENTER
                 });
-                box.add_child(this.secondCountdownLabel);
-                // Ajouter les champs d'entrée pour Username et Password dans le menu
+                box.add_child(this.selectedMilestoneLabel);
+                // Si des milestones sont disponibles, affiche la première par défaut
+                if (milestones.length > 0) {
+                    this._onMilestoneSelected(0);
+                }
                 this._addEntryFields();
                 this._addRefreshButton();
-                // Main.panel.addToStatusArea('Counter', this, 1, 'left');
                 this._startRefreshLoop();
+                this._refreshCountdowns();
             }
 
             _loadDatesFromFile() {
-                // Essayez de lire les dates à partir du fichier, sinon utilisez des valeurs par défaut
                 let datesFilePath = GLib.build_filenamev([Me.dir.get_path(), 'dates.txt']);
+                let milestones = [];
+                let ETA;
+
                 if (GLib.file_test(datesFilePath, GLib.FileTest.EXISTS)) {
                     let [res, contents] = GLib.file_get_contents(datesFilePath);
                     if (res) {
-                        let dates = contents.toString().trim().split('\n');
-                        if (dates.length >= 2) {
-                            dates = [new Date(dates[0].trim()), new Date(dates[1].trim())];
-                            dates[0].setDate(dates[0].getDate() + 1);
-                            dates[1].setDate(dates[1].getDate() + 1);
-                            return [dates[0], dates[1]];
+                        let lines = contents.toString().trim().split('\n');
+                        if (lines.length > 0) {
+                            // La première ligne est l'ETA
+                            ETA = new Date(lines[0].trim());
+                            ETA.setDate(ETA.getDate() + 1);
+
+                            // Les lignes suivantes sont les milestones
+                            for (let i = 1; i < lines.length; i++) {
+                                let date = new Date(lines[i].trim());
+                                date.setDate(date.getDate() + 1);
+                                milestones.push(date);
+                            }
                         }
                     }
                 }
-                // Valeurs par défaut si le fichier n'existe pas ou n'est pas valide
-                return [new Date("01/01/1970"), new Date("01/01/1970")];
+                if (!ETA) {
+                    ETA = new Date("01/01/1970");
+                }
+                if (milestones.length === 0) {
+                    milestones.push(new Date("01/01/1970"));
+                }
+
+                return { ETA, milestones };
             }
+
 
             _startRefreshLoop() {
                 GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
@@ -95,12 +127,24 @@
                     return GLib.SOURCE_CONTINUE; // Pour continuer à exécuter
                 });
             }
-
             _refreshCountdowns() {
-                // Assurez-vous que cette méthode met à jour les labels basés sur les propriétés actuelles
-                this.firstCountdownLabel.set_text("Milestone : " + get_time((this.firstCountdownDate.getTime() - (new Date()).getTime()) / 1000));
-                this.secondCountdownLabel.set_text("ETA : " + get_time((this.secondCountdownDate.getTime() - (new Date()).getTime()) / 1000));
+                let { ETA, milestones } = this._loadDatesFromFile();
+
+                // Mettre à jour l'ETA en permanence
+                this.ETALabel.set_text("ETA : " + get_time((ETA.getTime() - (new Date()).getTime()) / 1000));
+
+                // Vérifier si une sélection manuelle a été faite
+                if (this.manualSelection) {
+                    // Mettre à jour le label de la milestone sélectionnée si l'utilisateur a fait une sélection manuelle
+                    this.selectedMilestoneLabel.set_text(` | Milestone ${this.currentMilestoneIndex + 1}: ` + get_time((milestones[this.currentMilestoneIndex].getTime() - (new Date()).getTime()) / 1000));
+                } else {
+                    // Sinon, afficher la première milestone par défaut
+                    if (milestones.length > 0) {
+                        this.selectedMilestoneLabel.set_text(` | Milestone 1 : ` + get_time((milestones[0].getTime() - (new Date()).getTime()) / 1000));
+                    }
+                }
             }
+
             _addEntryFields() {
                 // Champ d'entrée pour Username
                 let usernameMenuItem = new PopupMenu.PopupBaseMenuItem({ reactive: false });
@@ -118,12 +162,16 @@
 
             _addRefreshButton() {
                 let refreshButton = new PopupMenu.PopupMenuItem('Refresh');
-                this.menu.addMenuItem(refreshButton);
+                this.menu.addMenuItem
                 refreshButton.connect('activate', () => {
-                    this._onRefreshClicked();
+                    // Réinitialiser la sélection manuelle lors du rafraîchissement
+                    this.manualSelection = false;
+                    this.currentMilestoneIndex = 0; // Réinitialiser à la première milestone
+
+                    // Recharger et rafraîchir les labels
+                    this._loadDatesAndUpdateLabels();
                 });
             }
-
 
             _onRefreshClicked() {
                 let username = this.usernameEntry.get_text();
@@ -201,12 +249,24 @@
             }
 
             _loadDatesAndUpdateLabels() {
-                let [firstDate, secondDate] = this._loadDatesFromFile();
-                this.firstCountdownDate = firstDate;
-                this.secondCountdownDate = secondDate;
+                // Charger les données depuis le fichier
+                let { ETA, milestones } = this._loadDatesFromFile();
+                this.ETA = ETA;
+                this.milestones = milestones;
 
-                // Met à jour les labels avec les nouvelles dates
+                // Mise à jour des labels
                 this._refreshCountdowns();
+            }
+            _onMilestoneSelected(index) {
+                this.currentMilestoneIndex = index;
+                this.manualSelection = true;
+                this._refreshCountdowns();
+            }
+
+            _onMenuMilestoneSelected(menuItem, index) {
+                menuItem.connect('activate', () => {
+                    this._onMilestoneSelected(index);
+                });
             }
         });
 
