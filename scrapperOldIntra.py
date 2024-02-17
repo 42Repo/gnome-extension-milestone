@@ -10,22 +10,28 @@ import sys
 
 # Initialisation de WebDriver
 options = webdriver.ChromeOptions()
-options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36")
+options.add_argument(
+    "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"
+)
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+driver = webdriver.Chrome(
+    service=Service(ChromeDriverManager().install()), options=options
+)
+
 
 def inverse_jour_mois(dates):
     # Création d'une liste pour stocker les dates inversées
     dates_inversees = []
     for date in dates:
         # Séparation de la date en ses composantes
-        elements = date.split('/')
+        elements = date.split("/")
         # Inversion du jour et du mois
         date_inverse = f"{elements[1]}/{elements[0]}/{elements[2]}"
         # Ajout de la date inversée à la liste
         dates_inversees.append(date_inverse)
     return dates_inversees
+
 
 def check_end_goals_filled(driver):
     try:
@@ -41,6 +47,7 @@ def check_end_goals_filled(driver):
         print(f"ERROR: Erreur lors de la vérification des end-goals: {e}")
         return False
 
+
 def main(username, password):
     # Ouvrir la page de connexion
     try:
@@ -49,7 +56,9 @@ def main(username, password):
 
         # on screen la page de connexion
         driver.save_screenshot("screenshot.png")
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "username")))
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "username"))
+        )
         # Remplir le formulaire de connexion (ajustez les sélecteurs et les valeurs)
         driver.find_element(By.ID, "username").send_keys(username)
         driver.find_element(By.ID, "password").send_keys(password)
@@ -58,7 +67,9 @@ def main(username, password):
         try:
             WebDriverWait(driver, 10).until(EC.title_is("Intra Profile Home"))
         except TimeoutException:
-            print("ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site.")
+            print(
+                "ERROR: Échec de connexion ou titre de page inattendu. Vérifiez vos identifiants ou la disponibilité du site."
+            )
             sys.exit(1)
         WebDriverWait(driver, 20).until(check_end_goals_filled)
 
@@ -73,10 +84,13 @@ def main(username, password):
             else:
                 print("ERROR: Moins de deux end-goals trouvés.")
         except NoSuchElementException:
-            print("ERROR: Un ou plusieurs éléments attendus ne sont pas trouvés sur la page.")
+            print(
+                "ERROR: Un ou plusieurs éléments attendus ne sont pas trouvés sur la page."
+            )
             return False
     finally:
         driver.quit()
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:
